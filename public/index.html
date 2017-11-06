@@ -1,0 +1,267 @@
+<html>
+<head>
+  <title>Book REST api test</title>
+  <link rel="stylesheet" type="text/css" href="css/layout.css?version=51">
+</head>
+<body>
+
+<script type="text/javascript" src="js/jquery-3.2.1.js"></script>
+<script type="text/javascript">
+  function cleanBook() {
+    // clear local values in order to present new results, if any.
+    document.getElementsByName("sIsbn")[0].value='';
+    document.getElementsByName("title")[0].value='';
+    document.getElementsByName("author")[0].value='';
+    document.getElementsByName("pubdate")[0].value='';
+    document.getElementsByName("price")[0].value='';
+    document.getElementById("txtStatus").innerText = '';
+
+  }
+
+  function closeWindow() {
+    $('#popUpWin').css({"visibility" : "hidden"});
+  }
+
+  function showList(booklist)  {
+    bookStr='<div style="width: 100%;border: 1px solid #000;"> ';
+    bookStr+='<p class="divTableCell">Click on an ISBN to select it</p> ';
+    bookStr+='<div class="divTable" style="table-layout: fixed; width: 100%;border: 1px solid #000;" > ';
+    bookStr+='<div class="divTableBody"> ';
+
+    booklist.forEach(function(item){
+      bookStr+='<div class="divTableRow"> ';
+      bookStr+='<div class="divTableCell" style="width:60px;">';
+      bookStr+='<p class="txtDiv"><span class="jsAction" onclick=searchBook("'+item.isbn+'")>'+item.isbn+'</span></p></div> ';
+      bookStr+='<div class="divTableCell" style="width:240px;"> ';
+      bookStr+='<p class="txtDiv">'+item.titulo+'</p></div> ';
+      bookStr+='<div class="divTableCell" style="width:100px;"> ';
+      bookStr+='<p class="txtDiv">'+item.autor+'</p></div> ';
+      bookStr+='</div> ';
+    });
+    bookStr+='</div> ';
+    bookStr+='</div> ';
+    bookStr+='<div style="text-align:right;"> ';
+    bookStr+='<button class="button" onclick="closeWindow();">Close</button> ';
+    bookStr+='</div>';
+    document.getElementById("popUpWin").innerHTML = bookStr;
+
+  }
+
+  // function to get list of books using API with GET method, notice
+  // there is no ISBN searched for, so its an 'open' search.
+  function getListBooks() {
+    // isbn to search for
+    // make call
+    $.ajax({
+      // call api with isbn
+       url: 'http://localhost:3000/api/books/',
+       dataType: 'jsonp',
+       methods: 'GET',
+       success: function(data) {
+
+         $('#popUpWin').css({"position" : "absolute",
+                             "visibility" : "visible",
+                             "display":"block",
+                             "top" : "120px",
+                             "left" : "200px",
+                             "width" : "600px",
+                             "height" : "300px",
+                             "padding" : "5px",
+                             "border": "2px solid #CCC",
+                             "z-Index": "1701",
+                             "background-color" : "#F9F9F9"});
+         showList(data);
+         // Change text message to success (and make it green)
+         var txtmsg=document.getElementById("txtStatus");
+         txtmsg.innerText = '200 success, we got the list !!';
+         txtmsg.style.color='Green';
+         // get book info and populate fields.
+       },
+       error: function(xhr, statusText, errorThrown) {
+           if (xhr.status == 404) {
+             // Book was not found, display text message
+             document.getElementById("txtStatus").innerText = xhr.status+' Book was not found !!';
+           }
+       }
+    });
+  }
+
+  function searchBook(isbn) {
+    closeWindow();
+    if (isbn == "") { // No ISBN? then we are searching for a list of books
+      getListBooks();
+    }
+    else {
+      // make call
+      $.ajax({
+        // call api with isbn
+         url: 'http://localhost:3000/api/books/'+isbn,
+         dataType: 'jsonp',
+         methods: 'GET',
+         success: function(data) {
+           // Change text message to success (and make it green)
+           var txtmsg=document.getElementById("txtStatus");
+           txtmsg.innerText = '200 success !!';
+           txtmsg.style.color='Green';
+           // get book info and populate fields.
+           var bookinfo=data[0];
+           document.getElementsByName("sIsbn")[0].value=bookinfo.isbn;
+           document.getElementsByName("title")[0].value=bookinfo.titulo;
+           document.getElementsByName("author")[0].value=bookinfo.autor;
+           document.getElementsByName("pubdate")[0].value=bookinfo.fecha_pub;
+           document.getElementsByName("price")[0].value=bookinfo.precio_lista;
+         },
+         error: function(xhr, statusText, errorThrown) {
+             if (xhr.status == 404) {
+               // Book was not found, display text message
+               document.getElementById("txtStatus").innerText = xhr.status+' Book was not found !!';
+             }
+         }
+      });
+    }
+  }
+
+  // function to get book info (or list of books) using API with GET method
+  function getBook() {
+    // isbn to search for
+    var isbn= document.getElementsByName("sIsbn")[0].value;
+    cleanBook();
+    searchBook(isbn);
+  }
+
+// function to save the book info by calling API with PUT method
+  function saveBook() {
+    // isbn to search for
+    document.getElementById("txtStatus").innerText = '';
+    var isbn = document.getElementsByName("sIsbn")[0].value;
+    var titulo = document.getElementsByName("title")[0].value;
+    var autor = document.getElementsByName("author")[0].value;
+    var fecha_pub = document.getElementsByName("pubdate")[0].value;
+    var precio_lista = document.getElementsByName("price")[0].value;
+    var bookinfo={ "isbn": isbn,
+                   "titulo": titulo,
+                   "autor": autor,
+                   "fecha_pub": fecha_pub,
+                   "precio_lista": precio_lista};
+    // make call
+    $.ajax({
+      url: "http://localhost:3000/api/books/"+isbn,
+      data:  JSON.stringify(bookinfo),
+      contentType: "application/json",
+      dataType:'json',
+      method: 'PUT',
+//      dataType: 'jsonp',
+//      headers: {"X-HTTP-Method-Override": "PUT"}, // X-HTTP-Method-Override set to PUT.
+      // call api with isbn
+//      "crossDomain": true,
+      headers: { "Content-Type": "application/json"},
+     success: function(data) {
+         // Change text message to success (and make it green)
+         var txtmsg=document.getElementById("txtStatus");
+         document.getElementById("txtStatus").innerText = 'Book has been saved !';
+//         alert(txtmsg);
+       },
+       error: function(xhr, statusText, errorThrown) {
+           if (xhr.status == 404) {
+             // Book was not found, display text message
+             document.getElementById("txtStatus").innerText = 'Book save ERROR !';
+           }
+       }
+    });
+  }
+
+  function deleteBook() {
+    // isbn to search for
+    document.getElementById("txtStatus").innerText = '';
+    var isbn = document.getElementsByName("sIsbn")[0].value;
+    var bookinfo={"isbn": isbn};
+    // make call
+    $.ajax({
+      url: "http://localhost:3000/api/books/9780486691862",
+      data:  bookinfo,
+      method: 'DELETE',
+//      crossDomain: true,
+//      dataType: 'jsonp',
+       success: function(data) {
+         // Change text message to success (and make it green)
+         document.getElementById("txtStatus").innerText = 'Book has been deleted !';
+         var txtmsg=document.getElementById("txtStatus");
+//         alert(txtmsg);
+       },
+       error: function(xhr, statusText, errorThrown) {
+           if (xhr.status == 404) {
+             // Book was not found, display text message
+             document.getElementById("txtStatus").innerText = 'Book delete ERROR !';
+           }
+       }
+    });
+  }
+
+
+</script>
+
+<div style="padding:2px;">
+  <h2>Book title creation REST Api test</h2>
+<!--    <form name='bookInfo'> -->
+
+      <div class="divTable" style="width: 60%;border: 1px solid #000;" >
+      <div id="popUpWin" class="popUpWindow"></div>
+      <div class="divTableBody">
+        <div class="divTableRow">
+          <div class="divTableCell" style="width:15%;"><label class='etiqueta'>ISBN</label></div>
+          <div class="divTableCell" style="width:85%;">
+            <div class="divTable">
+              <div class="divTableBody">
+              <div class="divTableRow">
+                <div style="display: table-cell; width:35%;">
+                  <input name='sIsbn' type='text' size=15 autofocus='' placeholder='ISBN'>
+                  <button class='button' onclick='getBook();'>Search</button>
+                </div>
+                <div style="display: table-cell; width:65%;">
+                <label class='txtError' id='txtStatus'>&nbsp;</label>
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="divTableRow">
+          <div class="divTableCell" style="width:15%;"><label class='etiqueta'>Title</label></div>
+          <div class="divTableCell">
+            <input name='title' type='text' size=80 autofocus='' placeholder='Title'>
+          </div>
+        </div>
+        <div class="divTableRow">
+          <div class="divTableCell" style="width:15%;"><label class='etiqueta'>Author</label></div>
+          <div class="divTableCell">
+            <input name='author' type='text' size=40 autofocus='' placeholder='Author'>
+          </div>
+        </div>
+        <div class="divTableRow">
+          <div class="divTableCell" style="width:15%;"><label class='etiqueta'>Pub Date</label></div>
+          <div class="divTableCell">
+            <input name='pubdate' type='text' size=15 autofocus='' placeholder='Pub Date'>
+          </div>
+        </div>
+        <div class="divTableRow">
+          <div class="divTableCell" style="width:15%;"><label class='etiqueta'>Sale Price</label></div>
+          <div class="divTableCell">
+            <input name='price' type='text' size=10 autofocus='' placeholder='Price'>
+          </div>
+        </div>
+        <div class="divTableRow">
+          <div class="divTableCell" style="width:15%;">&nbsp;</label></div>
+          <div class="divTableCell" style="text-align:right;">
+            <button class='button' onclick='saveBook();'>Save</button>
+            <button class='button' onclick='deleteBook();'>Delete</button>
+            <button class='button' onclick='cleanBook();'>Clear</button>
+          </div>
+        </div>
+      </div>
+      </div>
+
+<!--    </form> -->
+</div>
+
+</body>
+</html>
